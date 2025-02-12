@@ -1,6 +1,6 @@
-batch_size: 512                         # batch size
-warm_up: 10                             # warm-up epochs
-epochs: 100                             # total number of epochs
+batch_size: 64                         # batch size
+warm_up: 0                             # warm-up epochs
+epochs: 1                             # total number of epochs
 
 load_model: None                        # resume training
 eval_every_n_epochs: 1                  # validation frequency
@@ -14,15 +14,15 @@ gpu: cuda:0                             # training GPU
 
 model_type: gin                         # GNN backbone (i.e., gin/gcn)
 model: 
-  num_layer: 5                          # number of graph conv layers
-  emb_dim: 300                          # embedding dimension in graph conv layers
-  feat_dim: 512                         # output feature dimention
+  num_layer: 3                          # number of graph conv layers
+  emb_dim: 100                          # embedding dimension in graph conv layers
+  feat_dim: 128                         # output feature dimention
   drop_ratio: 0                         # dropout ratio
   pool: mean                            # readout pooling (i.e., mean/max/add)
 
 aug: node                               # molecule graph augmentation strategy (i.e., node/subgraph/mix)
 dataset:
-  num_workers: 12                       # dataloader number of workers
+  num_workers: 4                       # dataloader number of workers
   valid_size: 0.05                      # ratio of validation data
   data_path: data/pubchem-10m-clean.txt # path of pre-training data
 
