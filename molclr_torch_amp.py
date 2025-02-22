@@ -10,17 +10,9 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
+from torch.cuda.amp import GradScaler, autocast
+
 from utils.nt_xent import NTXentLoss
-
-apex_support = False
-try:
-    sys.path.append('./apex')
-    from apex import amp
-
-    apex_support = True
-except:
-    print("Please install apex for mixed precision training from: https://github.com/NVIDIA/apex")
-    apex_support = False
 
 
 def _save_config_file(model_checkpoints_folder):
@@ -40,6 +32,12 @@ class MolCLR(object):
 
         self.dataset = dataset
         self.nt_xent_criterion = NTXentLoss(self.device, config['batch_size'], **config['loss'])
+        
+        # Initialize GradScaler if fp16_precision is enabled
+        if self.config['fp16_precision']:
+            self.scaler = GradScaler()
+        else:
+            self.scaler = None
 
     def _get_device(self):
         if torch.cuda.is_available() and self.config['gpu'] != 'cpu':
@@ -48,13 +46,11 @@ class MolCLR(object):
         else:
             device = 'cpu'
         print("Running on:", device)
-
         return device
 
     def _step(self, model, xis, xjs, n_iter):
         # get the representations and the projections
         ris, zis = model(xis)  # [N,C]
-
         # get the representations and the projections
         rjs, zjs = model(xjs)  # [N,C]
 
@@ -89,11 +85,6 @@ class MolCLR(object):
             eta_min=0, last_epoch=-1
         )
 
-        if apex_support and self.config['fp16_precision']:
-            model, optimizer = amp.initialize(
-                model, optimizer, opt_level='O2', keep_batchnorm_fp32=True
-            )
-
         model_checkpoints_folder = os.path.join(self.writer.log_dir, 'checkpoints')
 
         # save config file
@@ -110,20 +101,22 @@ class MolCLR(object):
                 xis = xis.to(self.device)
                 xjs = xjs.to(self.device)
 
-                loss = self._step(model, xis, xjs, n_iter)
+                # Use autocast for mixed precision if enabled
+                with autocast(enabled=self.config['fp16_precision']):
+                    loss = self._step(model, xis, xjs, n_iter)
 
                 if n_iter % self.config['log_every_n_steps'] == 0:
                     self.writer.add_scalar('train_loss', loss, global_step=n_iter)
                     self.writer.add_scalar('cosine_lr_decay', scheduler.get_last_lr()[0], global_step=n_iter)
                     print(epoch_counter, bn, loss.item())
 
-                if apex_support and self.config['fp16_precision']:
-                    with amp.scale_loss(loss, optimizer) as scaled_loss:
-                        scaled_loss.backward()
+                if self.config['fp16_precision']:
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(optimizer)
+                    self.scaler.update()
                 else:
                     loss.backward()
-
-                optimizer.step()
+                    optimizer.step()
                 n_iter += 1
 
             # validate the model if requested
@@ -153,7 +146,6 @@ class MolCLR(object):
             print("Loaded pre-trained model with success.")
         except FileNotFoundError:
             print("Pre-trained weights not found. Training from scratch.")
-
         return model
 
     def _validate(self, model, valid_loader):
@@ -166,8 +158,8 @@ class MolCLR(object):
             for (xis, xjs) in valid_loader:
                 xis = xis.to(self.device)
                 xjs = xjs.to(self.device)
-
-                loss = self._step(model, xis, xjs, counter)
+                with autocast(enabled=self.config['fp16_precision']):
+                    loss = self._step(model, xis, xjs, counter)
                 valid_loss += loss.item()
                 counter += 1
             valid_loss /= counter
@@ -189,10 +181,36 @@ def main():
     else:
         raise ValueError('Not defined molecule augmentation!')
 
+    if config["fp16_precision"]:
+        print("Mixed precision training enabled.")
+    else:
+        print("Mixed precision training disabled.")
+
     dataset = MoleculeDatasetWrapper(config['batch_size'], **config['dataset'])
     molclr = MolCLR(dataset, config)
+
+    import time
+    start = time.time()
     molclr.train()
+    print("Training time:", time.time()-start) 
+
+    # beep when training is done, windows only
+    import winsound
+    winsound.Beep(1000, 3000)
+    
 
 
 if __name__ == "__main__":
+    # 0 2950 0.32182979583740234 (Train)
+    # 0 2967 0.447403307335499 (validation)
+    # Training time: 405.2895197868347 on 200k without fp16 Gin, python 3.7.12, torch 1.7.1, cuda 11.0
+    # 493.2956187725067
+
+    # 0 2950 0.32274124026298523
+    # 0 2967 0.43046443584637767 (validation)
+    # Training time: 380.43756890296936 on 200k with fp16 Gin, python 3.7.12, torch 1.7.1, cuda 11.0
+    # 434.27990651130676
+
+
+
     main()

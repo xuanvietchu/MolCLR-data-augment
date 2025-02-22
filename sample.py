@@ -22,10 +22,10 @@ if __name__ == '__main__':
 
     pubchem_file = os.path.join('data', pubchem_file)
 
-    sampled_pubchem_data = sample_data(pubchem_file, 0.2*10)
+    sampled_pubchem_data = sample_data(pubchem_file, 0.1*100)
 
     # Save the sampled data
-    sampled_pubchem_file = 'pubchem-200k-sample.txt'
+    sampled_pubchem_file = 'pubchem-1M-sample.txt'
     sampled_pubchem_file = os.path.join('data', sampled_pubchem_file)
     with open(sampled_pubchem_file, 'w') as file:
         file.writelines(sampled_pubchem_data)
