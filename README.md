@@ -24,7 +24,7 @@ $ conda install -c conda-forge nvidia-apex # optional
 
 # clone the source code of MolCLR
 $ git clone https://github.com/PaulHo0501/MolCLR-data-augment.git
-$ cd MolCLR
+$ cd MolCLR-data-augment
 ```
 
 ### Dataset
