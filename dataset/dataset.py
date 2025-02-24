@@ -58,7 +58,7 @@ def read_smiles(data_path, remove_header=False):
 class MoleculeDataset(Dataset):
     def __init__(self, data_path, remove_header=False):
         super(Dataset, self).__init__()
-        self.smiles_data = read_smiles(data_path, remover_header)
+        self.smiles_data = read_smiles(data_path, remove_header)
 
     def __getitem__(self, index):
         mol = Chem.MolFromSmiles(self.smiles_data[index])

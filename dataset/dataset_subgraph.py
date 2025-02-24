@@ -43,11 +43,11 @@ BONDDIR_LIST = [
 ]
 
 
-def read_smiles(data_path, remover_header=False):
+def read_smiles(data_path, remove_header=False):
     smiles_data = []
     with open(data_path) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
-        if remover_header:
+        if remove_header:
             next(csv_reader)
         for i, row in enumerate(csv_reader):
             smiles = row[-1]
@@ -93,7 +93,7 @@ def removeSubgraph(Graph, center, percent=0.2):
 class MoleculeDataset(Dataset):
     def __init__(self, data_path, remove_header=False):
         super(Dataset, self).__init__()
-        self.smiles_data = read_smiles(data_path, remover_header)
+        self.smiles_data = read_smiles(data_path, remove_header)
 
     def __getitem__(self, index):
         mol = Chem.MolFromSmiles(self.smiles_data[index])

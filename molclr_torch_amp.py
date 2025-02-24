@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from torch import GradScaler, autocast
+from torch.amp import GradScaler, autocast
 
 from utils.nt_xent import NTXentLoss
 
