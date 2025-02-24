@@ -12,5 +12,4 @@ RUN pip install torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.5
 RUN pip install torch_geometric PyYAML
 RUN conda install -c conda-forge rdkit
 RUN conda install -c conda-forge tensorboard
-RUN conda install -c conda-forge nvidia-apex
 USER anaconda
