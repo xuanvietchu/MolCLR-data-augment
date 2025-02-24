@@ -64,10 +64,10 @@ Look for the section that said the following:
 
 Use the link with `http://127.0.0.1:8888` to access the Jupyter Lab from your browser.
 
-In your Jupyter lab, create a new terminal window and run the following command to start training. This will use the `config.yaml` file as the base configuration for trainning.
+In your Jupyter lab, create a new terminal window and run the following command to start training (thanks Viet for the conversion). This will use the `config.yaml` file as the base configuration for trainning.
 
 ```bash
-python molclr.py
+python molclr_torch_amp.py
 ```
 
 After you have pretrained your model, modify your `config_finetune.yaml` to take in the model from `ckpt` folder and take the task you want to finetune. Then run the following command
