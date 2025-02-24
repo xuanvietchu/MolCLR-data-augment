@@ -81,6 +81,4 @@ An example of configuration is in the file `config.example.yaml`.
 ## Acknowledgement
 
 - MolCLR: [https://github.com/yuyangw/MolCLR/](https://github.com/yuyangw/MolCLR/)
-- PyTorch implementation of SimCLR: [https://github.com/sthalles/SimCLR](https://github.com/sthalles/SimCLR)
-- Strategies for Pre-training Graph Neural Networks: [https://github.com/snap-stanford/pretrain-gnns](https://github.com/snap-stanford/pretrain-gnns)
 - Structure visualization via UMAP embedding of MCES distances [https://github.com/boecker-lab/myopic-mces-data](https://github.com/boecker-lab/myopic-mces-data)
