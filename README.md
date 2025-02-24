@@ -28,6 +28,8 @@ $ conda install -c conda-forge nvidia-apex # optional
 # clone the source code of MolCLR
 $ git clone https://github.com/PaulHo0501/MolCLR-data-augment.git
 $ cd MolCLR-data-augment
+
+$ docker run --gpus all --rm -it -d -p 8888:8888 tienducho/molclr-data-augment
 ```
 
 ### Dataset
