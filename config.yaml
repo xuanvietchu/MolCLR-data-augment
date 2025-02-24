@@ -22,9 +22,10 @@ model:
 
 aug: node                               # molecule graph augmentation strategy (i.e., node/subgraph/mix)
 dataset:
+  remove_header: True                   # whether to remove the header of the csv file
   num_workers: 4                       # dataloader number of workers
   valid_size: 0.05                      # ratio of validation data
-  data_path: data/pubchem-200k-sample.txt # path of pre-training data
+  data_path: myopic-mces-data/biostructures_20k.csv # path of pre-training data
 
 loss:
   temperature: 0.1                      # temperature of NT-Xent loss
