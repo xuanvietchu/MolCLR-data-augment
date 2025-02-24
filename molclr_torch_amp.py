@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from torch.cuda.amp import GradScaler, autocast
+from torch import GradScaler, autocast
 
 from utils.nt_xent import NTXentLoss
 
@@ -102,7 +102,7 @@ class MolCLR(object):
                 xjs = xjs.to(self.device)
 
                 # Use autocast for mixed precision if enabled
-                with autocast(enabled=self.config['fp16_precision']):
+                with autocast("cuda", enabled=self.config['fp16_precision']):
                     loss = self._step(model, xis, xjs, n_iter)
 
                 if n_iter % self.config['log_every_n_steps'] == 0:
@@ -158,7 +158,7 @@ class MolCLR(object):
             for (xis, xjs) in valid_loader:
                 xis = xis.to(self.device)
                 xjs = xjs.to(self.device)
-                with autocast(enabled=self.config['fp16_precision']):
+                with autocast("cuda", enabled=self.config['fp16_precision']):
                     loss = self._step(model, xis, xjs, counter)
                 valid_loss += loss.item()
                 counter += 1
@@ -192,11 +192,7 @@ def main():
     import time
     start = time.time()
     molclr.train()
-    print("Training time:", time.time()-start) 
-
-    # beep when training is done, windows only
-    import winsound
-    winsound.Beep(1000, 3000)
+    print("Training time:", time.time() - start)
     
 
 
@@ -210,7 +206,4 @@ if __name__ == "__main__":
     # 0 2967 0.43046443584637767 (validation)
     # Training time: 380.43756890296936 on 200k with fp16 Gin, python 3.7.12, torch 1.7.1, cuda 11.0
     # 434.27990651130676
-
-
-
     main()
