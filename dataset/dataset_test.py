@@ -89,10 +89,12 @@ def scaffold_split(dataset, valid_size, test_size, seed=None, log_every_n=1000):
     return train_inds, valid_inds, test_inds
 
 
-def read_smiles(data_path, target, task):
+def read_smiles(data_path, target, task, remove_header=False):
     smiles_data, labels = [], []
     with open(data_path) as csv_file:
         csv_reader = csv.DictReader(csv_file, delimiter=',')
+        if remove_header:
+            next(csv_reader)
         for i, row in enumerate(csv_reader):
             if i != 0:
                 smiles = row['smiles']
@@ -111,9 +113,9 @@ def read_smiles(data_path, target, task):
 
 
 class MolTestDataset(Dataset):
-    def __init__(self, data_path, target, task):
+    def __init__(self, data_path, target, task, remove_header=False):
         super(Dataset, self).__init__()
-        self.smiles_data, self.labels = read_smiles(data_path, target, task)
+        self.smiles_data, self.labels = read_smiles(data_path, target, task, remove_header)
         self.task = task
 
         self.conversion = 1
@@ -171,7 +173,7 @@ class MolTestDatasetWrapper(object):
     
     def __init__(self, 
         batch_size, num_workers, valid_size, test_size, 
-        data_path, target, task, splitting
+        data_path, target, task, splitting, remove_header=False
     ):
         super(object, self).__init__()
         self.data_path = data_path
@@ -182,10 +184,11 @@ class MolTestDatasetWrapper(object):
         self.target = target
         self.task = task
         self.splitting = splitting
+        self.remove_header = remove_header
         assert splitting in ['random', 'scaffold']
 
     def get_data_loaders(self):
-        train_dataset = MolTestDataset(data_path=self.data_path, target=self.target, task=self.task)
+        train_dataset = MolTestDataset(data_path=self.data_path, target=self.target, task=self.task, remove_header=self.remove_header)
         train_loader, valid_loader, test_loader = self.get_train_validation_data_loaders(train_dataset)
         return train_loader, valid_loader, test_loader
 

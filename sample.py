@@ -3,7 +3,7 @@ import random
 import pandas as pd
 
 # Function to sample 0.2% of the content
-def sample_data(file_path, sample_percentage=0.2):
+def sample_data(file_path, sample_percentage=2):
     with open(file_path, 'r') as file:
         lines = file.readlines()
     

@@ -43,10 +43,12 @@ BONDDIR_LIST = [
 ]
 
 
-def read_smiles(data_path):
+def read_smiles(data_path, remove_header=False):
     smiles_data = []
     with open(data_path) as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
+        if remove_header:
+            next(csv_reader)
         for i, row in enumerate(csv_reader):
             smiles = row[-1]
             smiles_data.append(smiles)
@@ -54,9 +56,9 @@ def read_smiles(data_path):
 
 
 class MoleculeDataset(Dataset):
-    def __init__(self, data_path):
+    def __init__(self, data_path, remove_header=False):
         super(Dataset, self).__init__()
-        self.smiles_data = read_smiles(data_path)
+        self.smiles_data = read_smiles(data_path, remove_header)
 
     def __getitem__(self, index):
         mol = Chem.MolFromSmiles(self.smiles_data[index])
@@ -151,15 +153,16 @@ class MoleculeDataset(Dataset):
 
 
 class MoleculeDatasetWrapper(object):
-    def __init__(self, batch_size, num_workers, valid_size, data_path):
+    def __init__(self, batch_size, num_workers, valid_size, data_path, remove_header=False):
         super(object, self).__init__()
         self.data_path = data_path
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.valid_size = valid_size
+        self.remove_header = remove_header
 
     def get_data_loaders(self):
-        train_dataset = MoleculeDataset(data_path=self.data_path)
+        train_dataset = MoleculeDataset(data_path=self.data_path, remove_header=self.remove_header)
         train_loader, valid_loader = self.get_train_validation_data_loaders(train_dataset)
         return train_loader, valid_loader
 

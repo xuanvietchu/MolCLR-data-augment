@@ -1,0 +1,3 @@
+[submodule "myopic-mces-data"]
+	path = myopic-mces-data
+	url = https://github.com/boecker-lab/myopic-mces-data
