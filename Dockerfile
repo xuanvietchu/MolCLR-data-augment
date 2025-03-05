@@ -11,4 +11,5 @@ RUN pip install torch_geometric PyYAML scikit-learn
 RUN pip install torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.5.1+$cu124.html
 RUN conda install -c conda-forge rdkit=2022.3.3
 RUN conda install -c conda-forge tensorboard
+EXPOSE 6006
 USER anaconda
