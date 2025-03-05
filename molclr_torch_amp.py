@@ -1,16 +1,14 @@
 import os
 import shutil
-import sys
 import torch
 import yaml
 import numpy as np
 from datetime import datetime
 
 import torch.nn.functional as F
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard.writer import SummaryWriter
 from torch.optim.lr_scheduler import CosineAnnealingLR
-
-from torch.amp import GradScaler, autocast
+from torch import GradScaler, autocast
 
 from utils.nt_xent import NTXentLoss
 
@@ -18,21 +16,23 @@ from utils.nt_xent import NTXentLoss
 def _save_config_file(model_checkpoints_folder):
     if not os.path.exists(model_checkpoints_folder):
         os.makedirs(model_checkpoints_folder)
-        shutil.copy('./config.yaml', os.path.join(model_checkpoints_folder, 'config.yaml'))
+        shutil.copy('./config.yaml',
+                    os.path.join(model_checkpoints_folder, 'config.yaml'))
 
 
 class MolCLR(object):
     def __init__(self, dataset, config):
         self.config = config
         self.device = self._get_device()
-        
+
         dir_name = datetime.now().strftime('%b%d_%H-%M-%S')
         log_dir = os.path.join('ckpt', dir_name)
         self.writer = SummaryWriter(log_dir=log_dir)
 
         self.dataset = dataset
-        self.nt_xent_criterion = NTXentLoss(self.device, config['batch_size'], **config['loss'])
-        
+        self.nt_xent_criterion = NTXentLoss(
+            self.device, config['batch_size'], **config['loss'])
+    
         # Initialize GradScaler if fp16_precision is enabled
         if self.config['fp16_precision']:
             self.scaler = GradScaler()
@@ -75,17 +75,18 @@ class MolCLR(object):
         else:
             raise ValueError('Undefined GNN model.')
         print(model)
-        
+
         optimizer = torch.optim.Adam(
-            model.parameters(), self.config['init_lr'], 
+            model.parameters(), self.config['init_lr'],
             weight_decay=eval(self.config['weight_decay'])
         )
         scheduler = CosineAnnealingLR(
-            optimizer, T_max=self.config['epochs']-self.config['warm_up'], 
+            optimizer, T_max=self.config['epochs']-self.config['warm_up'],
             eta_min=0, last_epoch=-1
         )
 
-        model_checkpoints_folder = os.path.join(self.writer.log_dir, 'checkpoints')
+        model_checkpoints_folder = os.path.join(
+            self.writer.log_dir, 'checkpoints')
 
         # save config file
         _save_config_file(model_checkpoints_folder)
@@ -106,8 +107,10 @@ class MolCLR(object):
                     loss = self._step(model, xis, xjs, n_iter)
 
                 if n_iter % self.config['log_every_n_steps'] == 0:
-                    self.writer.add_scalar('train_loss', loss, global_step=n_iter)
-                    self.writer.add_scalar('cosine_lr_decay', scheduler.get_last_lr()[0], global_step=n_iter)
+                    self.writer.add_scalar(
+                        'train_loss', loss, global_step=n_iter)
+                    self.writer.add_scalar('cosine_lr_decay', scheduler.get_last_lr()[
+                                           0], global_step=n_iter)
                     print(epoch_counter, bn, loss.item())
 
                 if self.config['fp16_precision']:
@@ -126,13 +129,16 @@ class MolCLR(object):
                 if valid_loss < best_valid_loss:
                     # save the model weights
                     best_valid_loss = valid_loss
-                    torch.save(model.state_dict(), os.path.join(model_checkpoints_folder, 'model.pth'))
-            
-                self.writer.add_scalar('validation_loss', valid_loss, global_step=valid_n_iter)
+                    torch.save(model.state_dict(), os.path.join(
+                        model_checkpoints_folder, 'model.pth'))
+
+                self.writer.add_scalar(
+                    'validation_loss', valid_loss, global_step=valid_n_iter)
                 valid_n_iter += 1
-            
+
             if (epoch_counter+1) % self.config['save_every_n_epochs'] == 0:
-                torch.save(model.state_dict(), os.path.join(model_checkpoints_folder, 'model_{}.pth'.format(str(epoch_counter))))
+                torch.save(model.state_dict(), os.path.join(
+                    model_checkpoints_folder, 'model_{}.pth'.format(str(epoch_counter))))
 
             # warmup for the first few epochs
             if epoch_counter >= self.config['warm_up']:
@@ -140,8 +146,10 @@ class MolCLR(object):
 
     def _load_pre_trained_weights(self, model):
         try:
-            checkpoints_folder = os.path.join('./ckpt', self.config['load_model'], 'checkpoints')
-            state_dict = torch.load(os.path.join(checkpoints_folder, 'model.pth'))
+            checkpoints_folder = os.path.join(
+                './ckpt', self.config['load_model'], 'checkpoints')
+            state_dict = torch.load(os.path.join(
+                checkpoints_folder, 'model.pth'))
             model.load_state_dict(state_dict)
             print("Loaded pre-trained model with success.")
         except FileNotFoundError:
@@ -152,7 +160,6 @@ class MolCLR(object):
         # validation steps
         with torch.no_grad():
             model.eval()
-
             valid_loss = 0.0
             counter = 0
             for (xis, xjs) in valid_loader:
@@ -163,7 +170,7 @@ class MolCLR(object):
                 valid_loss += loss.item()
                 counter += 1
             valid_loss /= counter
-        
+
         model.train()
         return valid_loss
 
@@ -193,17 +200,7 @@ def main():
     start = time.time()
     molclr.train()
     print("Training time:", time.time() - start)
-    
 
 
 if __name__ == "__main__":
-    # 0 2950 0.32182979583740234 (Train)
-    # 0 2967 0.447403307335499 (validation)
-    # Training time: 405.2895197868347 on 200k without fp16 Gin, python 3.7.12, torch 1.7.1, cuda 11.0
-    # 493.2956187725067
-
-    # 0 2950 0.32274124026298523
-    # 0 2967 0.43046443584637767 (validation)
-    # Training time: 380.43756890296936 on 200k with fp16 Gin, python 3.7.12, torch 1.7.1, cuda 11.0
-    # 434.27990651130676
     main()

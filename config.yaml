@@ -1,13 +1,13 @@
-batch_size: 64                         # batch size
-warm_up: 0                             # warm-up epochs
-epochs: 1                             # total number of epochs
+batch_size: 64                          # batch size
+warm_up: 0                              # warm-up epochs
+epochs: 20                              # total number of epochs
 
 load_model: None                        # resume training
 eval_every_n_epochs: 1                  # validation frequency
 save_every_n_epochs: 5                  # automatic model saving frequecy
 log_every_n_steps: 50                   # print training log frequency
 
-fp16_precision: True                   # float precision 16 (i.e. True/False)
+fp16_precision: True                    # float precision 16 (i.e. True/False)
 init_lr: 0.0005                         # initial learning rate for Adam
 weight_decay: 1e-5                      # weight decay for Adam
 gpu: cuda:0                             # training GPU 
@@ -23,8 +23,8 @@ model:
 aug: node                               # molecule graph augmentation strategy (i.e., node/subgraph/mix)
 dataset:
   remove_header: True                   # whether to remove the header of the csv file
-  num_workers: 4                       # dataloader number of workers
-  valid_size: 0.05                      # ratio of validation data
+  num_workers: 4                                    # dataloader number of workers
+  valid_size: 0.05                                  # ratio of validation data
   data_path: myopic-mces-data/biostructures_20k.csv # path of pre-training data
 
 loss:
