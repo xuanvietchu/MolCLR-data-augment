@@ -131,7 +131,7 @@ class MolCLR(object):
                 if valid_loss < best_valid_loss:
                     # save the model weights
                     best_valid_loss = valid_loss
-                   torch.save(
+                    torch.save(
                         model.state_dict(),
                         os.path.join(model_checkpoints_folder, "model.pth"),
                     )
