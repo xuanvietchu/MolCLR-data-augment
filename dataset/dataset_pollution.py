@@ -150,6 +150,9 @@ class MoleculeDataset(Dataset):
 
         return data_i, data_j
 
+    def __len__(self):
+        return len(self.smiles_data)
+
 
 class MoleculeDatasetWrapper(object):
     def __init__(
