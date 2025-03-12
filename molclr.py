@@ -214,17 +214,14 @@ def main():
         from dataset.dataset_subgraph import MoleculeDatasetWrapper
     elif config["aug"] == "mix":
         from dataset.dataset_mix import MoleculeDatasetWrapper
-<<<<<<< HEAD
     elif config['aug'] == 'node_mask':
         from dataset.node_masking import MoleculeDatasetWrapper
     elif config['aug'] == 'edge_mask':
         from dataset.edge_masking import MoleculeDatasetWrapper
     elif config['aug'] == 'node_edge_mask':
         from dataset.node_edge_masking import MoleculeDatasetWrapper
-=======
     elif config["aug"] == "pollution":
         from dataset.dataset_pollution import MoleculeDatasetWrapper
->>>>>>> 5aaa367d22f2eea8f6a06008db1d237e147b373b
     else:
         raise ValueError("Not defined molecule augmentation!")
 
