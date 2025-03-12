@@ -107,9 +107,24 @@ class MoleculeDataset(Dataset):
         atomic_number = []
         atoms = mol.GetAtoms()
         bonds = mol.GetBonds()
-        # Sample 2 different centers to start for i and j
-        
 
+        if N < 2:  # Skip subgraphing if there is only one atom
+            for atom in atoms:
+                type_idx.append(ATOM_LIST.index(atom.GetAtomicNum()))
+                chirality_idx.append(CHIRALITY_LIST.index(atom.GetChiralTag()))
+                atomic_number.append(atom.GetAtomicNum())
+
+            x1 = torch.tensor(type_idx, dtype=torch.long).view(-1,1)
+            x2 = torch.tensor(chirality_idx, dtype=torch.long).view(-1,1)
+            x = torch.cat([x1, x2], dim=-1)
+            
+            edge_index = torch.tensor([], dtype=torch.long).view(2,0)  # No edges
+            edge_attr = torch.tensor([], dtype=torch.long).view(0,2)   # No edge features
+            
+            data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+            return data, data  # Return the same graph as both views
+
+        # Sample 2 different centers to start for i and j
         start_i, start_j = random.sample(list(range(N)), 2)
 
         # Construct the original molecular graph from edges (bonds)
