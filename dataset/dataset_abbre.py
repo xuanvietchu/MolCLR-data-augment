@@ -1,6 +1,6 @@
 import os
 import csv
-import re
+import math
 import time
 import random
 import networkx as nx
@@ -13,15 +13,13 @@ import torchvision.transforms as transforms
 from torch_scatter import scatter
 from torch_geometric.data import Data, Dataset, DataLoader
 from rdkit import Chem
-from rdkit.Chem.rdchem import HybridizationType, BondType as BT
+from rdkit.Chem.rdchem import BondType as BT
 from rdkit.Chem import AllChem
-from abbrs import ABBREVIATIONS, ABBREVIATIONS_VOCAB, ABBREVIATION_PATTERNS
-from rdkit.Chem import Draw
-from visualize import visualize_molecule
-from rdkit import Chem
+from dataset.abbrs import ABBREVIATIONS, ABBREVIATIONS_VOCAB, ABBREVIATION_PATTERNS
+# from visualize import visualize_molecule
 
 
-ATOM_DICT = {atom: idx for idx, atom in enumerate(range(1, 193))}
+ATOM_DICT = {atom: idx for idx, atom in enumerate(range(1, 119))}
 
 CHIRALITY_DICT = {
     Chem.rdchem.ChiralType.CHI_UNSPECIFIED: 0,
@@ -42,90 +40,40 @@ BONDDIR_DICT = {
     Chem.rdchem.BondDir.ENDDOWNRIGHT: 2
 }
 
-def apply_functional_group_abbreviations(mol):
-    """Efficiently replace functional groups in a molecule with abbreviation tokens while preserving order."""
-    patterns = list(ABBREVIATION_PATTERNS.items())
-    random.shuffle(patterns)  # Randomize processing order
-
-    for abbr, pattern in patterns:
-        sub = ABBREVIATIONS[abbr]
-        iso = ABBREVIATIONS_VOCAB[abbr]
-        if not sub.probability:
-            continue
-
-        matches = mol.GetSubstructMatches(pattern)
-        if not matches:
-            continue
-
-        dummy = Chem.MolFromSmiles(f"[{iso}*]")
-        atom = dummy.GetAtomWithIdx(0)
-        atom.SetProp("abbr", abbr)
-
-        placeholder = Chem.MolFromSmiles("[119*]")
-        
-        for match_atoms in matches:
-            old_smiles = Chem.MolToSmiles(mol)
-
-            if random.random() < sub.probability:
-                mol = Chem.ReplaceSubstructs(mol, pattern, dummy, replaceAll=False)[0]
-                img = visualize_molecule(mol, f"molecule with {sub.smarts} replaced by {abbr}")
-                print(f"Replaced {sub.smarts} from {old_smiles} to {Chem.MolToSmiles(mol)} with {abbr}")
-            else:
-                mol = Chem.ReplaceSubstructs(mol, pattern, placeholder, replaceAll=False)[0]
-                print(f"Skipped replacing {sub.smarts} with {abbr}")
-
-            mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol).replace(".", ""))
-
-        mol = Chem.ReplaceSubstructs(mol, Chem.MolFromSmiles("[119*]"), pattern, replaceAll=True)[0]
-        
-    
-    img = visualize_molecule(mol, f"molecule with abbreviations {Chem.MolToSmiles(mol)}")
-    
-    return mol
+def read_smiles(data_path, remove_header=False):
+    smiles_data = []
+    with open(data_path) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        if remove_header:
+            next(csv_reader)
+        for i, row in enumerate(csv_reader):
+            smiles = row[-1]
+            smiles_data.append(smiles)
+    return smiles_data
 
 
 class MoleculeDataset(Dataset):
     def __init__(self, data_path, remove_header=False):
         super(Dataset, self).__init__()
-        self.smiles_data = self.read_smiles(data_path, remove_header)
-
-    def read_smiles(self, data_path, remove_header=False):
-        smiles_data = []
-        with open(data_path) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
-            if remove_header:
-                next(csv_reader)
-            for row in csv_reader:
-                smiles_data.append(row[-1])
-        return smiles_data
+        self.smiles_data = read_smiles(data_path, remove_header)
 
     def __getitem__(self, index):
         mol = Chem.MolFromSmiles(self.smiles_data[index])
 
-        mol = apply_functional_group_abbreviations(mol)
-
-        mol = Chem.AddHs(mol)
-
-        
         N = mol.GetNumAtoms()
-        atoms = mol.GetAtoms()
-        bonds = mol.GetBonds()
+        M = mol.GetNumBonds()
 
         type_idx = []
         chirality_idx = []
+        atomic_number = []
         for atom in mol.GetAtoms():
-            if atom.HasProp("abbr"):  # Check if the atom has an abbreviation
-                type_idx.append(vocab[atom.GetProp("abbr")])  # Use abbreviation index
-                chirality_idx.append(0) # unspecified chirality for functional groups
-                
-            else:
-                type_idx.append(ATOM_DICT[atom.GetAtomicNum()])  # Use atomic number if no abbreviation
-                chirality_idx.append(CHIRALITY_DICT[atom.GetChiralTag()])
-        
+            type_idx.append(ATOM_DICT[atom.GetAtomicNum()])
+            chirality_idx.append(CHIRALITY_DICT[atom.GetChiralTag()])
+            atomic_number.append(atom.GetAtomicNum())
         x1 = torch.tensor(type_idx, dtype=torch.long).view(-1,1)
         x2 = torch.tensor(chirality_idx, dtype=torch.long).view(-1,1)
         x = torch.cat([x1, x2], dim=-1)
-        
+
         row, col, edge_feat = [], [], []
         for bond in mol.GetBonds():
             start, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
@@ -141,10 +89,77 @@ class MoleculeDataset(Dataset):
             ])
         edge_index = torch.tensor([row, col], dtype=torch.long)
         edge_attr = torch.tensor(np.array(edge_feat), dtype=torch.long)
-        return Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
-    
+
+        # --- NEW: Identify functional groups using the functional group (abbreviation) patterns ---
+        func_groups = []
+        for abbr, pattern in ABBREVIATION_PATTERNS.items():
+            matches = mol.GetSubstructMatches(pattern)
+            for match in matches:
+                func_groups.append(set(match))
+        # Build a mapping from an atom index to its functional group (if any)
+        atom_to_group = {}
+        for group in func_groups:
+            for atom_idx in group:
+                atom_to_group[atom_idx] = group
+
+        # Randomly mask a subgraph of the molecule with functional group consistency
+        num_mask_nodes = max(1, math.floor(0.25 * N))
+        mask_nodes_i = random.sample(list(range(N)), num_mask_nodes)
+        mask_nodes_j = random.sample(list(range(N)), num_mask_nodes)
+        # Expand: if an atom in a functional group is chosen, mask the entire group.
+        mask_nodes_i_expanded = set()
+        for node in mask_nodes_i:
+            if node in atom_to_group:
+                mask_nodes_i_expanded.update(atom_to_group[node])
+            else:
+                mask_nodes_i_expanded.add(node)
+        mask_nodes_i = list(mask_nodes_i_expanded)
+
+        mask_nodes_j_expanded = set()
+        for node in mask_nodes_j:
+            if node in atom_to_group:
+                mask_nodes_j_expanded.update(atom_to_group[node])
+            else:
+                mask_nodes_j_expanded.add(node)
+        mask_nodes_j = list(mask_nodes_j_expanded)
+        
+        num_mask_edges = max(0, math.floor(0.25 * M))
+        mask_edges_i_single = random.sample(list(range(M)), num_mask_edges)
+        mask_edges_j_single = random.sample(list(range(M)), num_mask_edges)
+        mask_edges_i = [2*i for i in mask_edges_i_single] + [2*i+1 for i in mask_edges_i_single]
+        mask_edges_j = [2*i for i in mask_edges_j_single] + [2*i+1 for i in mask_edges_j_single]
+
+        x_i = deepcopy(x)
+        for atom_idx in mask_nodes_i:
+            x_i[atom_idx, :] = torch.tensor([len(ATOM_DICT), 0])
+        edge_index_i = torch.zeros((2, 2*(M - num_mask_edges)), dtype=torch.long)
+        edge_attr_i = torch.zeros((2*(M - num_mask_edges), 2), dtype=torch.long)
+        count = 0
+        for bond_idx in range(2 * M):
+            if bond_idx not in mask_edges_i:
+                edge_index_i[:, count] = edge_index[:, bond_idx]
+                edge_attr_i[count, :] = edge_attr[bond_idx, :]
+                count += 1
+        data_i = Data(x=x_i, edge_index=edge_index_i, edge_attr=edge_attr_i)
+
+        x_j = deepcopy(x)
+        for atom_idx in mask_nodes_j:
+            x_j[atom_idx, :] = torch.tensor([len(ATOM_DICT), 0])
+        edge_index_j = torch.zeros((2, 2*(M - num_mask_edges)), dtype=torch.long)
+        edge_attr_j = torch.zeros((2*(M - num_mask_edges), 2), dtype=torch.long)
+        count = 0
+        for bond_idx in range(2 * M):
+            if bond_idx not in mask_edges_j:
+                edge_index_j[:, count] = edge_index[:, bond_idx]
+                edge_attr_j[count, :] = edge_attr[bond_idx, :]
+                count += 1
+        data_j = Data(x=x_j, edge_index=edge_index_j, edge_attr=edge_attr_j)
+        
+        return data_i, data_j
+
     def __len__(self):
         return len(self.smiles_data)
+
 
 class MoleculeDatasetWrapper(object):
     def __init__(self, batch_size, num_workers, valid_size, data_path, remove_header=False):
@@ -196,14 +211,14 @@ if __name__ == "__main__":
     # mol = Chem.MolFromSmiles('CCOC(=O)C(N=[N+]=[N-])C(c1ccccc1)[NH+]1CCOCC1') #3
     # mol = Chem.MolFromSmiles('Cc1cc(N2C(=O)C3CC=CC(C)C3C2=O)no1') #4
 
-    # print(ABBREVIATIONS_VOCAB)
+    print(ABBREVIATIONS_VOCAB)
     
-    img = visualize_molecule(mol, "original molecule")
+    # img = visualize_molecule(mol, "original molecule")
     # save image
-    img.save("original_molecule.png")
+    # img.save("original_molecule.png")
 
     start = time.time()
-    mol = apply_functional_group_abbreviations(mol)
+    # mol = apply_functional_group_abbreviations(mol)
     # print("Mol:", Chem.MolToSmiles(mol))
 
     # mol = Chem.ReplaceSubstructs(mol, Chem.MolFromSmiles("C=CC"), Chem.MolFromSmiles("[119*]"), replaceAll=False)[0]

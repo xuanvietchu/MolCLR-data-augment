@@ -136,7 +136,7 @@ class MoleculeDataset(Dataset):
         x = torch.cat([x1, x2], dim=-1)
         # x shape (N, 2) [type, chirality]
 
-        # Mask the atoms in the removed list
+        # Mask the atoms in the removed list 
         x_i = deepcopy(x)
         for atom_idx in removed_i:
             # Change atom type to 118, and chirality to 0

@@ -176,8 +176,11 @@ def main():
         from dataset.dataset import MoleculeDatasetWrapper
     elif config['aug'] == 'subgraph':
         from dataset.dataset_subgraph import MoleculeDatasetWrapper
+    elif config['aug'] == 'abbre':
+        from dataset.dataset_abbre import MoleculeDatasetWrapper
     elif config['aug'] == 'mix':
         from dataset.dataset_mix import MoleculeDatasetWrapper
+    
     else:
         raise ValueError('Not defined molecule augmentation!')
 
