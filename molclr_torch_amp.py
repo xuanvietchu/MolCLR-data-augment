@@ -1,16 +1,14 @@
 import os
 import shutil
-import sys
 import torch
 import yaml
 import numpy as np
 from datetime import datetime
 
 import torch.nn.functional as F
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard.writer import SummaryWriter
 from torch.optim.lr_scheduler import CosineAnnealingLR
-
-from torch.amp import GradScaler, autocast
+from torch import GradScaler, autocast
 
 from utils.nt_xent import NTXentLoss
 
@@ -18,9 +16,8 @@ from utils.nt_xent import NTXentLoss
 def _save_config_file(model_checkpoints_folder):
     if not os.path.exists(model_checkpoints_folder):
         os.makedirs(model_checkpoints_folder)
-        shutil.copy(
-            "./config.yaml", os.path.join(model_checkpoints_folder, "config.yaml")
-        )
+        shutil.copy('./config.yaml',
+                    os.path.join(model_checkpoints_folder, 'config.yaml'))
 
 
 class MolCLR(object):
@@ -28,15 +25,14 @@ class MolCLR(object):
         self.config = config
         self.device = self._get_device()
 
-        dir_name = datetime.now().strftime("%b%d_%H-%M-%S")
-        log_dir = os.path.join("ckpt", dir_name)
+        dir_name = datetime.now().strftime('%b%d_%H-%M-%S')
+        log_dir = os.path.join('ckpt', dir_name)
         self.writer = SummaryWriter(log_dir=log_dir)
 
         self.dataset = dataset
         self.nt_xent_criterion = NTXentLoss(
-            self.device, config["batch_size"], **config["loss"]
-        )
-
+            self.device, config['batch_size'], **config['loss'])
+    
         # Initialize GradScaler if fp16_precision is enabled
         if self.config["fp16_precision"]:
             self.scaler = GradScaler()
@@ -83,18 +79,16 @@ class MolCLR(object):
         print(model)
 
         optimizer = torch.optim.Adam(
-            model.parameters(),
-            self.config["init_lr"],
-            weight_decay=eval(self.config["weight_decay"]),
+            model.parameters(), self.config['init_lr'],
+            weight_decay=eval(self.config['weight_decay'])
         )
         scheduler = CosineAnnealingLR(
-            optimizer,
-            T_max=self.config["epochs"] - self.config["warm_up"],
-            eta_min=0,
-            last_epoch=-1,
+            optimizer, T_max=self.config['epochs']-self.config['warm_up'],
+            eta_min=0, last_epoch=-1
         )
 
-        model_checkpoints_folder = os.path.join(self.writer.log_dir, "checkpoints")
+        model_checkpoints_folder = os.path.join(
+            self.writer.log_dir, 'checkpoints')
 
         # save config file
         _save_config_file(model_checkpoints_folder)
@@ -114,13 +108,11 @@ class MolCLR(object):
                 with autocast("cuda", enabled=self.config["fp16_precision"]):
                     loss = self._step(model, xis, xjs, n_iter)
 
-                if n_iter % self.config["log_every_n_steps"] == 0:
-                    self.writer.add_scalar("train_loss", loss, global_step=n_iter)
+                if n_iter % self.config['log_every_n_steps'] == 0:
                     self.writer.add_scalar(
-                        "cosine_lr_decay",
-                        scheduler.get_last_lr()[0],
-                        global_step=n_iter,
-                    )
+                        'train_loss', loss, global_step=n_iter)
+                    self.writer.add_scalar('cosine_lr_decay', scheduler.get_last_lr()[
+                                           0], global_step=n_iter)
                     print(epoch_counter, bn, loss.item())
 
                 if self.config["fp16_precision"]:
@@ -178,7 +170,6 @@ class MolCLR(object):
         # validation steps
         with torch.no_grad():
             model.eval()
-
             valid_loss = 0.0
             counter = 0
             for xis, xjs in valid_loader:
@@ -204,6 +195,8 @@ def main():
         from dataset.dataset_subgraph import MoleculeDatasetWrapper
     elif config["aug"] == "mix":
         from dataset.dataset_mix import MoleculeDatasetWrapper
+    elif config['aug'] == 'no_aug':
+        from dataset.dataset_no_aug import MoleculeDatasetWrapper
     elif config['aug'] == 'node_mask':
         from dataset.node_masking import MoleculeDatasetWrapper
     elif config['aug'] == 'edge_mask':
@@ -231,13 +224,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # 0 2950 0.32182979583740234 (Train)
-    # 0 2967 0.447403307335499 (validation)
-    # Training time: 405.2895197868347 on 200k without fp16 Gin, python 3.7.12, torch 1.7.1, cuda 11.0
-    # 493.2956187725067
-
-    # 0 2950 0.32274124026298523
-    # 0 2967 0.43046443584637767 (validation)
-    # Training time: 380.43756890296936 on 200k with fp16 Gin, python 3.7.12, torch 1.7.1, cuda 11.0
-    # 434.27990651130676
     main()
