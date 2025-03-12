@@ -108,6 +108,8 @@ class MoleculeDataset(Dataset):
         atoms = mol.GetAtoms()
         bonds = mol.GetBonds()
         # Sample 2 different centers to start for i and j
+        
+
         start_i, start_j = random.sample(list(range(N)), 2)
 
         # Construct the original molecular graph from edges (bonds)
