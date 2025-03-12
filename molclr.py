@@ -186,6 +186,12 @@ def main():
         from dataset.dataset_subgraph import MoleculeDatasetWrapper
     elif config['aug'] == 'mix':
         from dataset.dataset_mix import MoleculeDatasetWrapper
+    elif config['aug'] == 'node_mask':
+        from dataset.node_masking import MoleculeDatasetWrapper
+    elif config['aug'] == 'edge_mask':
+        from dataset.edge_masking import MoleculeDatasetWrapper
+    elif config['aug'] == 'node_edge_mask':
+        from dataset.node_edge_masking import MoleculeDatasetWrapper
     else:
         raise ValueError('Not defined molecule augmentation!')
 
