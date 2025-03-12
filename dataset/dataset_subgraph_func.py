@@ -144,8 +144,50 @@ class MoleculeDataset(Dataset):
         data_i = Data(x=x_i, edge_index=edge_index_i, edge_attr=edge_attr_i)
         data_j = Data(x=x_j, edge_index=edge_index_j, edge_attr=edge_attr_j)
         return data_i, data_j
+    
+    def __len__(self):
+        return len(self.smiles_data)
 
+class MoleculeDatasetWrapper(object):
+    def __init__(self, batch_size, num_workers, valid_size, data_path, remove_header=False):
+        super(object, self).__init__()
+        self.data_path = data_path
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.valid_size = valid_size
+        self.remove_header = remove_header
 
+    def get_data_loaders(self):
+        train_dataset = MoleculeDataset(data_path=self.data_path, remove_header=self.remove_header)
+        train_loader, valid_loader = self.get_train_validation_data_loaders(train_dataset)
+        return train_loader, valid_loader
+
+    def get_train_validation_data_loaders(self, train_dataset):
+        # obtain training indices that will be used for validation
+        num_train = len(train_dataset)
+        indices = list(range(num_train))
+        
+        # random_state = np.random.RandomState(seed=666)
+        # random_state.shuffle(indices)
+        np.random.shuffle(indices)
+
+        split = int(np.floor(self.valid_size * num_train))
+        train_idx, valid_idx = indices[split:], indices[:split]
+
+        # define samplers for obtaining training and validation batches
+        train_sampler = SubsetRandomSampler(train_idx)
+        valid_sampler = SubsetRandomSampler(valid_idx)
+
+        train_loader = DataLoader(
+            train_dataset, batch_size=self.batch_size, sampler=train_sampler,
+            num_workers=self.num_workers, drop_last=True
+        )
+        valid_loader = DataLoader(
+            train_dataset, batch_size=self.batch_size, sampler=valid_sampler,
+            num_workers=self.num_workers, drop_last=True
+        )
+
+        return train_loader, valid_loader
 
 if __name__ == "__main__":
     data_path = 'data/chem_dataset/zinc_standard_agent/processed/smiles.csv'
