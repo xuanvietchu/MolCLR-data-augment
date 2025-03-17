@@ -106,7 +106,7 @@ class MoleculeDataset(Dataset):
         num_mask_nodes = max(1, math.floor(0.25 * N))
         mask_nodes_i = random.sample(list(range(N)), num_mask_nodes)
         mask_nodes_j = random.sample(list(range(N)), num_mask_nodes)
-        # Expand: if an atom in a functional group is chosen, mask the entire group.
+        # Expand: if an atom in a functional group is chosen, do not mask it
         mask_nodes_i_expanded = set()
         for node in mask_nodes_i:
             if node in atom_to_group:
