@@ -19,10 +19,10 @@ class Substitution(object):
         self.probability = probability
 
 SUBSTITUTIONS: List[Substitution] = [
-    Substitution(['NO2', 'O2N'], '[N+](=O)[O-]', "[N+](=O)[O-]", 0.7),
-    Substitution(['CHO', 'OHC'], '[CH1](=O)', "[CH1](=O)", 0.5),
-    Substitution(['CO2Et', 'COOEt','EtO2C'], 'C(=O)[OH0;D2][CH2;D2][CH3]', "[C](=O)OCC", 0.5),
-    Substitution(['CO2Me', 'COOMe','MeO2C'], 'C(=O)[OH0;D2][CH3;D1]', "[C](=O)OC", 0),
+    Substitution(['NO2'], '[N+](=O)[O-]', "[N+](=O)[O-]", 0.7),
+    Substitution(['CHO'], '[CH1](=O)', "[CH1](=O)", 0.5),
+    Substitution(['CO2Et'], 'C(=O)[OH0;D2][CH2;D2][CH3]', "[C](=O)OCC", 0.5),
+    Substitution(['CO2Me'], 'C(=O)[OH0;D2][CH3;D1]', "[C](=O)OC", 0),
 
     Substitution(['OAc'], '[OH0;X2]C(=O)[CH3]', "[O]C(=O)C", 0.7),
     Substitution(['NHAc'], '[NH1;D2]C(=O)[CH3]', "[NH]C(=O)C", 0.7),
@@ -60,43 +60,43 @@ SUBSTITUTIONS: List[Substitution] = [
     Substitution(['Ts'], 'S(=O)(=O)c1[cH1][cH1][cH0]([CH3])[cH1][cH1]1', "[S](=O)(=O)c1ccc(C)cc1", 0.6),  # Tos
 
     # Alkyl chains
-    Substitution(['OMe', 'MeO'], '[OH0;D2][CH3;D1]', "[O]C", 0.3),
-    Substitution(['SMe', 'MeS'], '[SH0;D2][CH3;D1]', "[S]C", 0.3),
-    Substitution(['NMe', 'MeN'], '[N;X3][CH3;D1]', "[NH]C", 0.3),
-    Substitution(['Me', 'IMe'], '[CH3;D1]', "[CH3]", 0.1),
-    Substitution(['OEt', 'EtO'], '[OH0;D2][CH2;D2][CH3]', "[O]CC", 0.5),
-    Substitution(['Et', 'C2H5'], '[CH2;D2][CH3]', "[CH2]C", 0.3),
-    Substitution(['Pr', 'nPr', 'n-Pr'], '[CH2;D2][CH2;D2][CH3]', "[CH2]CC", 0.3),
-    Substitution(['Bu', 'nBu', 'n-Bu'], '[CH2;D2][CH2;D2][CH2;D2][CH3]', "[CH2]CCC", 0.3),
+    Substitution(['OMe'], '[OH0;D2][CH3;D1]', "[O]C", 0.3),
+    Substitution(['SMe'], '[SH0;D2][CH3;D1]', "[S]C", 0.3),
+    Substitution(['NMe'], '[N;X3][CH3;D1]', "[NH]C", 0.3),
+    Substitution(['Me'], '[CH3;D1]', "[CH3]", 0.1),
+    Substitution(['OEt'], '[OH0;D2][CH2;D2][CH3]', "[O]CC", 0.5),
+    Substitution(['Et'], '[CH2;D2][CH3]', "[CH2]C", 0.3),
+    Substitution(['Pr'], '[CH2;D2][CH2;D2][CH3]', "[CH2]CC", 0.3),
+    Substitution(['Bu'], '[CH2;D2][CH2;D2][CH2;D2][CH3]', "[CH2]CCC", 0.3),
 
     # Branched
-    Substitution(['iPr', 'i-Pr'], '[CH1;D3]([CH3])[CH3]', "[CH1](C)C", 0.2),
-    Substitution(['iBu', 'i-Bu'], '[CH2;D2][CH1;D3]([CH3])[CH3]', "[CH2]C(C)C", 0.2),
+    Substitution(['iPr'], '[CH1;D3]([CH3])[CH3]', "[CH1](C)C", 0.2),
+    Substitution(['iBu'], '[CH2;D2][CH1;D3]([CH3])[CH3]', "[CH2]C(C)C", 0.2),
     Substitution(['OiBu'], '[OH0;D2][CH2;D2][CH1;D3]([CH3])[CH3]', "[O]CC(C)C", 0.2),
     Substitution(['OtBu'], '[OH0;D2][CH0]([CH3])([CH3])[CH3]', "[O]C(C)(C)C", 0.6),
-    Substitution(['tBu', 't-Bu'], '[CH0]([CH3])([CH3])[CH3]', "[C](C)(C)C", 0.3),
+    Substitution(['tBu'], '[CH0]([CH3])([CH3])[CH3]', "[C](C)(C)C", 0.3),
 
     # Other shorthands (MIGHT NOT WANT ALL OF THESE)
-    Substitution(['CF3', 'F3C'], '[CH0;D4](F)(F)F', "[C](F)(F)F", 0.5),
-    Substitution(['NCF3', 'F3CN'], '[N;X3][CH0;D4](F)(F)F', "[NH]C(F)(F)F", 0.5),
-    Substitution(['OCF3', 'F3CO'], '[OH0;X2][CH0;D4](F)(F)F', "[O]C(F)(F)F", 0.5),
+    Substitution(['CF3'], '[CH0;D4](F)(F)F', "[C](F)(F)F", 0.5),
+    Substitution(['NCF3'], '[N;X3][CH0;D4](F)(F)F', "[NH]C(F)(F)F", 0.5),
+    Substitution(['OCF3'], '[OH0;X2][CH0;D4](F)(F)F', "[O]C(F)(F)F", 0.5),
     Substitution(['CCl3'], '[CH0;D4](Cl)(Cl)Cl', "[C](Cl)(Cl)Cl", 0.5),
-    Substitution(['CO2H', 'HO2C', 'COOH'], 'C(=O)[OH]', "[C](=O)O", 0.5),  # COOH
-    Substitution(['CN', 'NC'], 'C#[ND1]', "[C]#N", 0.5),
-    Substitution(['OCH3', 'H3CO'], '[OH0;D2][CH3]', "[O]C", 0.4),
+    Substitution(['CO2H'], 'C(=O)[OH]', "[C](=O)O", 0.5),  # COOH
+    Substitution(['CN'], 'C#[ND1]', "[C]#N", 0.5),
+    Substitution(['OCH3'], '[OH0;D2][CH3]', "[O]C", 0.4),
     Substitution(['SO3H'], 'S(=O)(=O)[OH]', "[S](=O)(=O)O", 0.4),
 
 
 
-    Substitution(['C5H17','C5H11','C5H14'], 'CCCCC', "CCCCC", 0.0),
-    Substitution(['Alyl','Allyl'], 'C=CC', "C=CC", 0.0),
-    Substitution(['OAll','OAlI'], 'OCC=C', "OCC=C", 0.0),
+    Substitution(['C5H17'], 'CCCCC', "CCCCC", 0.0),
+    Substitution(['Alyl'], 'C=CC', "C=CC", 0.0),
+    Substitution(['OAll'], 'OCC=C', "OCC=C", 0.0),
 
     Substitution(['N3'], 'N=[N+]=[N-]', "N=[N+]=[N-]", 0.2),
     Substitution(['N2+'], 'N#[N+]', "N#[N+]", 0),
     Substitution(['N2'], '[N+]=[N-]', "[N+]=[N-]", 0),
     Substitution(['MeO2C', 'C02Me'], 'C(=O)OC', '[C](=O)OC', 0),
-    Substitution(['Tos','Tcs'], 'S(=O)(=O)c1[cH1][cH1][cH0]([CH3])[cH1][cH1]1', "[S](=O)(=O)c1ccc(C)cc1", 0),  # Tos
+    Substitution(['Tos'], 'S(=O)(=O)c1[cH1][cH1][cH0]([CH3])[cH1][cH1]1', "[S](=O)(=O)c1ccc(C)cc1", 0),  # Tos
     Substitution(['OTBDMS'], '[OH0;D2][Si](C)(C)C(C)(C)C', "[O][Si](C)(C)C(C)(C)C", 0),  # TBDMS
     Substitution(['SP'], 'S[P]', "S[P]", 0), # Sulfenyl Phosphide
     Substitution(['CH3O'], '[OH0;D2][CH3]', "[O]C", 0),
