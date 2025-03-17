@@ -96,6 +96,10 @@ class MoleculeDataset(Dataset):
             matches = mol.GetSubstructMatches(pattern)
             for match in matches:
                 func_groups.append(set(match))
+                
+        # shuffle func_groups
+        random.shuffle(func_groups)
+
         # Build a mapping from an atom index to its functional group (if any)
         atom_to_group = {}
         for group in func_groups:
