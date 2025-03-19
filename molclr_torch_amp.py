@@ -195,6 +195,8 @@ def main():
         from dataset.dataset_subgraph import MoleculeDatasetWrapper
     elif config['aug'] == 'func':
         from dataset.dataset_func import MoleculeDatasetWrapper
+    elif config['aug'] == 'func_excl':
+        from dataset.dataset_func_excl import MoleculeDatasetWrapper
     elif config['aug'] == 'subgraph_func':
         from dataset.dataset_subgraph_func import MoleculeDatasetWrapper
     elif config["aug"] == "mix":

@@ -96,7 +96,7 @@ class MoleculeDataset(Dataset):
             matches = mol.GetSubstructMatches(pattern)
             for match in matches:
                 func_groups.append(set(match))
-                
+        
         # shuffle func_groups
         random.shuffle(func_groups)
 
@@ -110,14 +110,14 @@ class MoleculeDataset(Dataset):
         num_mask_nodes = max(1, math.floor(0.25 * N))
         mask_nodes_i = random.sample(list(range(N)), num_mask_nodes)
         mask_nodes_j = random.sample(list(range(N)), num_mask_nodes)
-        # Expand: if an atom in a functional group is chosen, mask the entire group.
-        mask_nodes_i_expanded = set()
+        # Expand: if an atom in a functional group is chosen, do not mask it
+        mask_nodes_i_removed = set()
         for node in mask_nodes_i:
             if node in atom_to_group:
-                mask_nodes_i_expanded.update(atom_to_group[node])
+                mask_nodes_i_removed.difference_update(atom_to_group[node])
             else:
-                mask_nodes_i_expanded.add(node)
-        mask_nodes_i = list(mask_nodes_i_expanded)
+                mask_nodes_i_removed.add(node)
+        mask_nodes_i = list(mask_nodes_i_removed)
 
         mask_nodes_j_expanded = set()
         for node in mask_nodes_j:
