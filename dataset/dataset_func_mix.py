@@ -216,40 +216,4 @@ class MoleculeDatasetWrapper(object):
 
 if __name__ == "__main__":
     # python dataset/dataset_abbre.py
-
-    # data_path = 'data/pubchem-20k-sample.txt'
-    # dataset = MoleculeDataset(data_path=data_path)
-    # print(dataset.__getitem__(0))
-
-    
-    # mol = Chem.MolFromSmiles('CCC(C)CC(NN)C1CCC(C)O1') 
-    # mol = Chem.MolFromSmiles('CCOc1ccccc1N1C(=O)C(=O)N(CC(=O)c2cc(C)c(C)cc2C)C1=O') #1
-    mol = Chem.MolFromSmiles('Cc1ccnc(N2CCC(C)C2C(=O)[O-])c1[N+](=O)[O-]') #2
-    # mol = Chem.MolFromSmiles('CCOC(=O)C(N=[N+]=[N-])C(c1ccccc1)[NH+]1CCOCC1') #3
-    # mol = Chem.MolFromSmiles('Cc1cc(N2C(=O)C3CC=CC(C)C3C2=O)no1') #4
-
     print(ABBREVIATIONS_VOCAB)
-    
-    # img = visualize_molecule(mol, "original molecule")
-    # save image
-    # img.save("original_molecule.png")
-
-    start = time.time()
-    # mol = apply_functional_group_abbreviations(mol)
-    # print("Mol:", Chem.MolToSmiles(mol))
-
-    # mol = Chem.ReplaceSubstructs(mol, Chem.MolFromSmiles("C=CC"), Chem.MolFromSmiles("[119*]"), replaceAll=False)[0]
-    # # mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol).replace(".", ""))
-    # print("Mol:", Chem.MolToSmiles(mol))
-    # img = visualize_molecule(mol, "molecule with abbreviations")
-
-    # mol = Chem.ReplaceSubstructs(mol, Chem.MolFromSmiles("[119*]"), Chem.MolFromSmiles("C=CC"), replaceAll=True)[0]
-    # # mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol).replace(".", ""))
-    # print("Mol:", Chem.MolToSmiles(mol))
-    # # remove . from the smiles of molecule
-    # img = visualize_molecule(mol, "molecule with undo")
-
-
-    end = time.time()
-    print("Time taken to apply functional group abbreviations:", end-start)
-
