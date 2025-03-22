@@ -128,7 +128,7 @@ for sub in SUBSTITUTIONS:
     mol = Chem.MolFromSmarts(sub.smarts)
     if mol is not None:
         for abbrv in sub.abbrvs:
-            ABBREVIATION_PATTERNS[abbrv] = mol
+            ABBREVIATION_PATTERNS[abbrv] = mol, sub.probability
 
 
 ABBREVIATIONS_VOCAB = { # start from 121
@@ -175,5 +175,5 @@ FORMULA_REGEX = re.compile(
 
 if __name__ == "__main__":
     # print(FORMULA_REGEX)
-    print(ABBREVIATIONS['DMSO'])
+    print(ABBREVIATION_PATTERNS)
     
