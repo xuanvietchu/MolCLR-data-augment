@@ -110,8 +110,8 @@ class MoleculeDataset(Dataset):
         num_mask_nodes_i = max([0, math.floor(0.25*N)])
         num_mask_nodes_j = max([0, math.floor(0.25*N)])
 
-        mask_nodes_i = random.sample(atom_remain_indices_i, num_mask_nodes_i)
-        mask_nodes_j = random.sample(atom_remain_indices_j, num_mask_nodes_j)
+        mask_nodes_i = random.sample(list(range(N)), num_mask_nodes_i)
+        mask_nodes_j = random.sample(list(range(N)), num_mask_nodes_j)
         # Expand: if an atom in a functional group is chosen, do not mask it
         mask_nodes_i_removed = set()
         for node in mask_nodes_i:
