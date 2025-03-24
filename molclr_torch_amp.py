@@ -201,6 +201,8 @@ def main():
         from dataset.dataset_func_mix import MoleculeDatasetWrapper
     elif config["aug"] == "mix":
         from dataset.dataset_mix import MoleculeDatasetWrapper
+    elif config["aug"] == "mix_new":
+        from dataset.dataset_mix_new import MoleculeDatasetWrapper
     elif config['aug'] == 'no_aug':
         from dataset.dataset_no_aug import MoleculeDatasetWrapper
     elif config['aug'] == 'node_mask':
