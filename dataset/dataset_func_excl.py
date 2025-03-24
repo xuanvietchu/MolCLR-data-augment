@@ -93,43 +93,47 @@ class MoleculeDataset(Dataset):
         # --- NEW: Identify functional groups using the functional group (abbreviation) patterns ---
         func_groups = []
         for abbr, pattern in ABBREVIATION_PATTERNS.items():
-            matches = mol.GetSubstructMatches(pattern)
+            matches = mol.GetSubstructMatches(pattern[0])
             for match in matches:
-                func_groups.append(set(match))
-        
+                func_groups.append((set(match), pattern[1]))
+                
         # shuffle func_groups
         random.shuffle(func_groups)
 
         # Build a mapping from an atom index to its functional group (if any)
         atom_to_group = {}
-        for group in func_groups:
+        for group, prob in func_groups:
             for atom_idx in group:
-                atom_to_group[atom_idx] = group
+                atom_to_group[atom_idx] = group, prob
 
         # Randomly mask a subgraph of the molecule with functional group consistency
-        num_mask_nodes = max(1, math.floor(0.25 * N))
-        mask_nodes_i = random.sample(list(range(N)), num_mask_nodes)
-        mask_nodes_j = random.sample(list(range(N)), num_mask_nodes)
+        num_mask_nodes_i = max([0, math.floor(0.25*N)])
+        num_mask_nodes_j = max([0, math.floor(0.25*N)])
+
+        mask_nodes_i = random.sample(list(range(N)), num_mask_nodes_i)
+        mask_nodes_j = random.sample(list(range(N)), num_mask_nodes_j)
         # Expand: if an atom in a functional group is chosen, do not mask it
         mask_nodes_i_removed = set()
         for node in mask_nodes_i:
-            if node in atom_to_group:
-                mask_nodes_i_removed.difference_update(atom_to_group[node])
+            if node in atom_to_group and random.random() < atom_to_group[node][1]:
+                mask_nodes_i_removed.difference_update(atom_to_group[node][0])
             else:
                 mask_nodes_i_removed.add(node)
         mask_nodes_i = list(mask_nodes_i_removed)
 
-        mask_nodes_j_expanded = set()
+        mask_nodes_j_removed = set()
         for node in mask_nodes_j:
-            if node in atom_to_group:
-                mask_nodes_j_expanded.update(atom_to_group[node])
+            if node in atom_to_group and random.random() < atom_to_group[node][1]:
+                mask_nodes_j_removed.difference_update(atom_to_group[node][0])
             else:
-                mask_nodes_j_expanded.add(node)
-        mask_nodes_j = list(mask_nodes_j_expanded)
+                mask_nodes_j_removed.add(node)
+        mask_nodes_j = list(mask_nodes_j_removed)
         
-        num_mask_edges = max(0, math.floor(0.25 * M))
-        mask_edges_i_single = random.sample(list(range(M)), num_mask_edges)
-        mask_edges_j_single = random.sample(list(range(M)), num_mask_edges)
+        num_mask_edges_i = max(0, math.floor(0.25 * M))
+        num_mask_edges_j = max(0, math.floor(0.25 * M))
+        
+        mask_edges_i_single = random.sample(list(range(M)), num_mask_edges_i)
+        mask_edges_j_single = random.sample(list(range(M)), num_mask_edges_j)
         mask_edges_i = [2*i for i in mask_edges_i_single] + [2*i+1 for i in mask_edges_i_single]
         mask_edges_j = [2*i for i in mask_edges_j_single] + [2*i+1 for i in mask_edges_j_single]
 

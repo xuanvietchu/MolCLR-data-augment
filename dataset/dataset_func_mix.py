@@ -112,28 +112,39 @@ class MoleculeDataset(Dataset):
 
         mask_nodes_i = random.sample(list(range(N)), num_mask_nodes_i)
         mask_nodes_j = random.sample(list(range(N)), num_mask_nodes_j)
-        # Expand: if an atom in a functional group is chosen, mask the entire group.
-        mask_nodes_i_expanded = set()
-        for node in mask_nodes_i:
-            if node in atom_to_group and random.random() < atom_to_group[node][1]:
-                mask_nodes_i_expanded.update(atom_to_group[node][0])
-            else:
-                mask_nodes_i_expanded.add(node)
-        mask_nodes_i = list(mask_nodes_i_expanded)
+        
+        
+        iroll = random.random()
 
-        mask_nodes_j_expanded = set()
-        for node in mask_nodes_j:
-            if node in atom_to_group and random.random() < atom_to_group[node][1]:
-                mask_nodes_j_expanded.update(atom_to_group[node][0])
-            else:
-                mask_nodes_j_expanded.add(node)
-        mask_nodes_j = list(mask_nodes_j_expanded)
+        if iroll < 2/3:
+            mask_nodes_i_expanded = set()
+            for node in mask_nodes_i:
+                if node in atom_to_group and random.random() < atom_to_group[node][1]:
+                    if iroll < 1/3:
+                        mask_nodes_i_expanded.update(atom_to_group[node][0]) # mask the entire functional group
+                    else:
+                        mask_nodes_i_expanded.difference_update(atom_to_group[node][0]) # exclude the functional group
+                else:
+                    mask_nodes_i_expanded.add(node)
+            mask_nodes_i = list(mask_nodes_i_expanded)
         
-        num_mask_edges_i = max(0, math.floor(0.25 * M))
-        num_mask_edges_j = max(0, math.floor(0.25 * M))
+        jroll = random.random()
+
+        if jroll < 2/3:
+            mask_nodes_j_expanded = set()
+            for node in mask_nodes_j:
+                if node in atom_to_group and random.random() < atom_to_group[node][1]:
+                    if jroll < 1/3:
+                        mask_nodes_j_expanded.update(atom_to_group[node][0]) # mask the entire functional group
+                    else:
+                        mask_nodes_j_expanded.difference_update(atom_to_group[node][0])  # exclude the functional group
+                else:
+                    mask_nodes_j_expanded.add(node)
+            mask_nodes_j = list(mask_nodes_j_expanded)
         
-        mask_edges_i_single = random.sample(list(range(M)), num_mask_edges_i)
-        mask_edges_j_single = random.sample(list(range(M)), num_mask_edges_j)
+        num_mask_edges = max(0, math.floor(0.25 * M))
+        mask_edges_i_single = random.sample(list(range(M)), num_mask_edges)
+        mask_edges_j_single = random.sample(list(range(M)), num_mask_edges)
         mask_edges_i = [2*i for i in mask_edges_i_single] + [2*i+1 for i in mask_edges_i_single]
         mask_edges_j = [2*i for i in mask_edges_j_single] + [2*i+1 for i in mask_edges_j_single]
 
@@ -207,40 +218,4 @@ class MoleculeDatasetWrapper(object):
 
 if __name__ == "__main__":
     # python dataset/dataset_abbre.py
-
-    # data_path = 'data/pubchem-20k-sample.txt'
-    # dataset = MoleculeDataset(data_path=data_path)
-    # print(dataset.__getitem__(0))
-
-    
-    # mol = Chem.MolFromSmiles('CCC(C)CC(NN)C1CCC(C)O1') 
-    # mol = Chem.MolFromSmiles('CCOc1ccccc1N1C(=O)C(=O)N(CC(=O)c2cc(C)c(C)cc2C)C1=O') #1
-    mol = Chem.MolFromSmiles('Cc1ccnc(N2CCC(C)C2C(=O)[O-])c1[N+](=O)[O-]') #2
-    # mol = Chem.MolFromSmiles('CCOC(=O)C(N=[N+]=[N-])C(c1ccccc1)[NH+]1CCOCC1') #3
-    # mol = Chem.MolFromSmiles('Cc1cc(N2C(=O)C3CC=CC(C)C3C2=O)no1') #4
-
     print(ABBREVIATIONS_VOCAB)
-    
-    # img = visualize_molecule(mol, "original molecule")
-    # save image
-    # img.save("original_molecule.png")
-
-    start = time.time()
-    # mol = apply_functional_group_abbreviations(mol)
-    # print("Mol:", Chem.MolToSmiles(mol))
-
-    # mol = Chem.ReplaceSubstructs(mol, Chem.MolFromSmiles("C=CC"), Chem.MolFromSmiles("[119*]"), replaceAll=False)[0]
-    # # mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol).replace(".", ""))
-    # print("Mol:", Chem.MolToSmiles(mol))
-    # img = visualize_molecule(mol, "molecule with abbreviations")
-
-    # mol = Chem.ReplaceSubstructs(mol, Chem.MolFromSmiles("[119*]"), Chem.MolFromSmiles("C=CC"), replaceAll=True)[0]
-    # # mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol).replace(".", ""))
-    # print("Mol:", Chem.MolToSmiles(mol))
-    # # remove . from the smiles of molecule
-    # img = visualize_molecule(mol, "molecule with undo")
-
-
-    end = time.time()
-    print("Time taken to apply functional group abbreviations:", end-start)
-

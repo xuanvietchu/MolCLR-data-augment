@@ -12,30 +12,33 @@ from torch.utils.data.sampler import SubsetRandomSampler
 import torchvision.transforms as transforms
 from torch_scatter import scatter
 from torch_geometric.data import Data, Dataset, DataLoader
-import rdkit
 from rdkit import Chem
 from rdkit.Chem.rdchem import BondType as BT
 from rdkit.Chem import AllChem
+from dataset.abbrs import ABBREVIATIONS, ABBREVIATIONS_VOCAB, ABBREVIATION_PATTERNS
+# from visualize import visualize_molecule
 
 
-ATOM_LIST = list(range(1,119))
-CHIRALITY_LIST = [
-    Chem.rdchem.ChiralType.CHI_UNSPECIFIED,
-    Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW,
-    Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW,
-    Chem.rdchem.ChiralType.CHI_OTHER
-]
-BOND_LIST = [
-    BT.SINGLE, 
-    BT.DOUBLE, 
-    BT.TRIPLE, 
-    BT.AROMATIC
-]
-BONDDIR_LIST = [
-    Chem.rdchem.BondDir.NONE,
-    Chem.rdchem.BondDir.ENDUPRIGHT,
-    Chem.rdchem.BondDir.ENDDOWNRIGHT
-]
+ATOM_DICT = {atom: idx for idx, atom in enumerate(range(1, 119))}
+
+CHIRALITY_DICT = {
+    Chem.rdchem.ChiralType.CHI_UNSPECIFIED: 0,
+    Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CW: 1,
+    Chem.rdchem.ChiralType.CHI_TETRAHEDRAL_CCW: 2,
+    Chem.rdchem.ChiralType.CHI_OTHER: 3
+}
+
+BOND_DICT = {
+    BT.SINGLE: 0,
+    BT.DOUBLE: 1, 
+    BT.TRIPLE: 2,
+    BT.AROMATIC: 3
+}
+BONDDIR_DICT = {
+    Chem.rdchem.BondDir.NONE: 0, 
+    Chem.rdchem.BondDir.ENDUPRIGHT: 1,
+    Chem.rdchem.BondDir.ENDDOWNRIGHT: 2
+}
 
 
 def remove_subgraph(Graph, center, percent=0.2):
@@ -61,7 +64,6 @@ def remove_subgraph(Graph, center, percent=0.2):
 
         temp = list(set(neighbors))
     return G, removed
-
 
 def read_smiles(data_path, remove_header=False):
     smiles_data = []
@@ -96,10 +98,9 @@ class MoleculeDataset(Dataset):
         chirality_idx = []
         atomic_number = []
         for atom in mol.GetAtoms():
-            type_idx.append(ATOM_LIST.index(atom.GetAtomicNum()))
-            chirality_idx.append(CHIRALITY_LIST.index(atom.GetChiralTag()))
+            type_idx.append(ATOM_DICT[atom.GetAtomicNum()])
+            chirality_idx.append(CHIRALITY_DICT[atom.GetChiralTag()])
             atomic_number.append(atom.GetAtomicNum())
-
         x1 = torch.tensor(type_idx, dtype=torch.long).view(-1,1)
         x2 = torch.tensor(chirality_idx, dtype=torch.long).view(-1,1)
         x = torch.cat([x1, x2], dim=-1)
@@ -110,12 +111,12 @@ class MoleculeDataset(Dataset):
             row += [start, end]
             col += [end, start]
             edge_feat.append([
-                BOND_LIST.index(bond.GetBondType()),
-                BONDDIR_LIST.index(bond.GetBondDir())
+                BOND_DICT[bond.GetBondType()],
+                BONDDIR_DICT[bond.GetBondDir()]
             ])
             edge_feat.append([
-                BOND_LIST.index(bond.GetBondType()),
-                BONDDIR_LIST.index(bond.GetBondDir())
+                BOND_DICT[bond.GetBondType()],
+                BONDDIR_DICT[bond.GetBondDir()]
             ])
 
         edge_index = torch.tensor([row, col], dtype=torch.long)
@@ -149,8 +150,8 @@ class MoleculeDataset(Dataset):
         for bond in mol.GetBonds():
             start, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
             feature = [
-                BOND_LIST.index(bond.GetBondType()),
-                BONDDIR_LIST.index(bond.GetBondDir())
+                BOND_DICT[bond.GetBondType()],
+                BONDDIR_DICT[bond.GetBondDir()]
             ]
             if (start, end) in G_i_edges or (end, start) in G_i_edges:
                 row_i += [start, end]
@@ -169,15 +170,62 @@ class MoleculeDataset(Dataset):
         edge_attr_j = torch.tensor(np.array(edge_feat_j), dtype=torch.long)
 
         ############################
-        # Random Atom/Edge Masking #
+        # Functional Group/Edge Masking #
         ############################
 
         num_mask_nodes_i = max([0, math.floor(0.25*N)-len(removed_i)])
         num_mask_edges_i = max([0, edge_attr_i.size(0)//2 - math.ceil(0.75*M)])
         num_mask_nodes_j = max([0, math.floor(0.25*N)-len(removed_j)])
         num_mask_edges_j = max([0, edge_attr_j.size(0)//2 - math.ceil(0.75*M)])
+
+        # --- NEW: Identify functional groups using the functional group (abbreviation) patterns ---
+        func_groups = []
+        for abbr, pattern in ABBREVIATION_PATTERNS.items():
+            matches = mol.GetSubstructMatches(pattern[0])
+            for match in matches:
+                func_groups.append((set(match), pattern[1]))
+                
+        # shuffle func_groups
+        random.shuffle(func_groups)
+
+        # Build a mapping from an atom index to its functional group (if any)
+        atom_to_group = {}
+        for group, prob in func_groups:
+            for atom_idx in group:
+                atom_to_group[atom_idx] = group, prob
+
+        # Randomly mask a subgraph of the molecule with functional group consistency
         mask_nodes_i = random.sample(atom_remain_indices_i, num_mask_nodes_i)
         mask_nodes_j = random.sample(atom_remain_indices_j, num_mask_nodes_j)
+        
+        iroll = random.random()
+
+        if iroll < 2/3:
+            mask_nodes_i_expanded = set()
+            for node in mask_nodes_i:
+                if node in atom_to_group and random.random() < atom_to_group[node][1]:
+                    if iroll < 1/3:
+                        mask_nodes_i_expanded.update(atom_to_group[node][0]) # mask the entire functional group
+                    else:
+                        mask_nodes_i_expanded.difference_update(atom_to_group[node][0]) # exclude the functional group
+                else:
+                    mask_nodes_i_expanded.add(node)
+            mask_nodes_i = list(mask_nodes_i_expanded)
+        
+        jroll = random.random()
+
+        if jroll < 2/3:
+            mask_nodes_j_expanded = set()
+            for node in mask_nodes_j:
+                if node in atom_to_group and random.random() < atom_to_group[node][1]:
+                    if jroll < 1/3:
+                        mask_nodes_j_expanded.update(atom_to_group[node][0]) # mask the entire functional group
+                    else:
+                        mask_nodes_j_expanded.difference_update(atom_to_group[node][0])  # exclude the functional group
+                else:
+                    mask_nodes_j_expanded.add(node)
+            mask_nodes_j = list(mask_nodes_j_expanded)
+
         mask_edges_i_single = random.sample(list(range(edge_attr_i.size(0)//2)), num_mask_edges_i)
         mask_edges_j_single = random.sample(list(range(edge_attr_j.size(0)//2)), num_mask_edges_j)
         mask_edges_i = [2*i for i in mask_edges_i_single] + [2*i+1 for i in mask_edges_i_single]
@@ -186,7 +234,7 @@ class MoleculeDataset(Dataset):
         x_i = deepcopy(x)
         for atom_idx in range(N):
             if (atom_idx in mask_nodes_i) or (atom_idx in removed_i):
-                x_i[atom_idx,:] = torch.tensor([len(ATOM_LIST), 0])
+                x_i[atom_idx, :] = torch.tensor([len(ATOM_DICT), 0])
         edge_index_final_i = torch.zeros((2, edge_attr_i.size(0) - 2*num_mask_edges_i), dtype=torch.long)
         edge_attr_final_i = torch.zeros((edge_attr_i.size(0) - 2*num_mask_edges_i, 2), dtype=torch.long)
         count = 0
@@ -200,7 +248,7 @@ class MoleculeDataset(Dataset):
         x_j = deepcopy(x)
         for atom_idx in range(N):
             if (atom_idx in mask_nodes_j) or (atom_idx in removed_j):
-                x_j[atom_idx,:] = torch.tensor([len(ATOM_LIST), 0])
+                x_j[atom_idx,:] = torch.tensor([len(ATOM_DICT), 0])
         edge_index_final_j = torch.zeros((2, edge_attr_j.size(0) - 2*num_mask_edges_j), dtype=torch.long)
         edge_attr_final_j = torch.zeros((edge_attr_j.size(0) - 2*num_mask_edges_j, 2), dtype=torch.long)
         count = 0
@@ -254,3 +302,8 @@ class MoleculeDatasetWrapper(object):
         )
 
         return train_loader, valid_loader
+
+
+if __name__ == "__main__":
+    # python dataset/dataset_abbre.py
+    print(ABBREVIATIONS_VOCAB)
