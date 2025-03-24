@@ -6,19 +6,14 @@ import random
 import networkx as nx
 import numpy as np
 from copy import deepcopy
-import networkx as nx
-
 import torch
 import torch.nn.functional as F
 from torch.utils.data.sampler import SubsetRandomSampler
 import torchvision.transforms as transforms
-
 from torch_scatter import scatter
 from torch_geometric.data import Data, Dataset, DataLoader
-
 import rdkit
 from rdkit import Chem
-from rdkit.Chem.rdchem import HybridizationType
 from rdkit.Chem.rdchem import BondType as BT
 from rdkit.Chem import AllChem
 

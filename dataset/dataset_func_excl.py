@@ -107,9 +107,11 @@ class MoleculeDataset(Dataset):
                 atom_to_group[atom_idx] = group, prob
 
         # Randomly mask a subgraph of the molecule with functional group consistency
-        num_mask_nodes = max(1, math.floor(0.25 * N))
-        mask_nodes_i = random.sample(list(range(N)), num_mask_nodes)
-        mask_nodes_j = random.sample(list(range(N)), num_mask_nodes)
+        num_mask_nodes_i = max([0, math.floor(0.25*N)])
+        num_mask_nodes_j = max([0, math.floor(0.25*N)])
+
+        mask_nodes_i = random.sample(atom_remain_indices_i, num_mask_nodes_i)
+        mask_nodes_j = random.sample(atom_remain_indices_j, num_mask_nodes_j)
         # Expand: if an atom in a functional group is chosen, do not mask it
         mask_nodes_i_removed = set()
         for node in mask_nodes_i:
@@ -127,9 +129,11 @@ class MoleculeDataset(Dataset):
                 mask_nodes_j_removed.add(node)
         mask_nodes_j = list(mask_nodes_j_removed)
         
-        num_mask_edges = max(0, math.floor(0.25 * M))
-        mask_edges_i_single = random.sample(list(range(M)), num_mask_edges)
-        mask_edges_j_single = random.sample(list(range(M)), num_mask_edges)
+        num_mask_edges_i = max(0, math.floor(0.25 * M))
+        num_mask_edges_j = max(0, math.floor(0.25 * M))
+        
+        mask_edges_i_single = random.sample(list(range(M)), num_mask_edges_i)
+        mask_edges_j_single = random.sample(list(range(M)), num_mask_edges_j)
         mask_edges_i = [2*i for i in mask_edges_i_single] + [2*i+1 for i in mask_edges_i_single]
         mask_edges_j = [2*i for i in mask_edges_j_single] + [2*i+1 for i in mask_edges_j_single]
 
