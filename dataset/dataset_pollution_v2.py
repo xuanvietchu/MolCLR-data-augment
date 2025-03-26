@@ -11,8 +11,6 @@ from torch_geometric.data import Data, Dataset, DataLoader
 from rdkit import Chem
 from rdkit.Chem.rdchem import BondType as BT
 
-from visualize import visualize_molecule
-
 
 ATOM_LIST = list(range(1, 119))
 CHIRALITY_LIST = [
@@ -212,6 +210,8 @@ if __name__ == "__main__":
     """
     Tests
     """
+    from visualize import visualize_molecule
+
     mol = Chem.MolFromSmiles("CCC")
     visualize_molecule(mol, name="before_simple")
     new_mol = add_random_atoms(mol)
