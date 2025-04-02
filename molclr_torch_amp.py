@@ -199,6 +199,8 @@ def main():
         from dataset.dataset_func_excl import MoleculeDatasetWrapper
     elif config['aug'] == 'func_mix':
         from dataset.dataset_func_mix import MoleculeDatasetWrapper
+    elif config['aug'] == 'func_repl':
+        from dataset.dataset_func_repl import MoleculeDatasetWrapper
     elif config["aug"] == "mix":
         from dataset.dataset_mix import MoleculeDatasetWrapper
     elif config["aug"] == "mix_new":

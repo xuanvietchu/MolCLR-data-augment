@@ -16,6 +16,7 @@ from rdkit import Chem
 from rdkit.Chem.rdchem import BondType as BT
 from rdkit.Chem import AllChem
 from dataset.abbrs import ABBREVIATIONS, ABBREVIATIONS_VOCAB, ABBREVIATION_PATTERNS
+import sys
 # from visualize import visualize_molecule
 
 
@@ -57,6 +58,39 @@ class MoleculeDataset(Dataset):
         super(Dataset, self).__init__()
         self.smiles_data = read_smiles(data_path, remove_header)
 
+        self.func_group_mappings = self.precompute_func_groups()
+
+    def precompute_func_groups(self):
+        """Precompute functional group mappings for all molecules in the dataset."""
+        func_group_mappings = []
+        
+        shuffled_patterns = list(ABBREVIATION_PATTERNS.items())  # Shuffle once
+        random.shuffle(shuffled_patterns)
+
+        max_size = 100000 
+        count = 0
+
+        for smiles in self.smiles_data:
+            mol = Chem.MolFromSmiles(smiles)
+            if mol is None:
+                func_group_mappings.append([])  # Handle invalid molecules
+                continue
+            
+            func_groups = []
+            for abbr, pattern in shuffled_patterns:
+                matches = mol.GetSubstructMatches(pattern[0])
+                for match in matches:
+                    func_groups.append((set(match), pattern[1]))  # Store as (atom set, probability)
+            
+            func_group_mappings.append(func_groups)
+            count += 1
+            if count >= max_size:
+                break
+        
+        print(f"Memory allocated to self.func_group_mappings: {sys.getsizeof(func_group_mappings)} bytes")
+        
+        return func_group_mappings  # Cached functional group mappings
+
     def __getitem__(self, index):
         mol = Chem.MolFromSmiles(self.smiles_data[index])
 
@@ -91,49 +125,41 @@ class MoleculeDataset(Dataset):
         edge_attr = torch.tensor(np.array(edge_feat), dtype=torch.long)
 
         # --- NEW: Identify functional groups using the functional group (abbreviation) patterns ---
-        func_groups = []
-        for abbr, pattern in ABBREVIATION_PATTERNS.items():
-            matches = mol.GetSubstructMatches(pattern[0])
-            for match in matches:
-                func_groups.append((set(match), pattern[1]))
-                
-        # shuffle func_groups
-        random.shuffle(func_groups)
+        try:
+            func_groups = self.func_group_mappings[index]  # Use precomputed data
+            atom_to_group = {atom_idx: (group, prob) for group, prob in func_groups for atom_idx in group}
+        except IndexError: # cache miss
+            atom_to_group = {}
+            shuffled_patterns = list(ABBREVIATION_PATTERNS.items())
+            random.shuffle(shuffled_patterns)
+            for abbr, (pattern, prob) in shuffled_patterns:
+                for match in mol.GetSubstructMatches(pattern):
+                    match_set = set(match)
+                    for atom_idx in match_set:
+                        atom_to_group[atom_idx] = (match_set, prob)
 
-        # Build a mapping from an atom index to its functional group (if any)
-        atom_to_group = {}
-        for group, prob in func_groups:
-            for atom_idx in group:
-                atom_to_group[atom_idx] = group, prob
 
         # Randomly mask a subgraph of the molecule with functional group consistency
-        num_mask_nodes_i = max([0, math.floor(0.25*N)])
-        num_mask_nodes_j = max([0, math.floor(0.25*N)])
+        num_mask_nodes_i = max([1, math.floor(0.25*N)])
+        num_mask_nodes_j = max([1, math.floor(0.25*N)])
 
         mask_nodes_i = random.sample(list(range(N)), num_mask_nodes_i)
         mask_nodes_j = random.sample(list(range(N)), num_mask_nodes_j)
-        # Expand: if an atom in a functional group is chosen, do not mask it
-        mask_nodes_i_removed = set()
-        for node in mask_nodes_i:
-            if node in atom_to_group and random.random() < atom_to_group[node][1]:
-                mask_nodes_i_removed.difference_update(atom_to_group[node][0])
-            else:
-                mask_nodes_i_removed.add(node)
-        mask_nodes_i = list(mask_nodes_i_removed)
+        
+        # Expand mask with functional group probability
+        def expand_mask(mask_nodes):
+            expanded_set = set(mask_nodes)
+            for node in mask_nodes:
+                if node in atom_to_group and random.random() < atom_to_group[node][1]:
+                    expanded_set.difference_update(atom_to_group[node][0])
+            return list(expanded_set)
 
-        mask_nodes_j_removed = set()
-        for node in mask_nodes_j:
-            if node in atom_to_group and random.random() < atom_to_group[node][1]:
-                mask_nodes_j_removed.difference_update(atom_to_group[node][0])
-            else:
-                mask_nodes_j_removed.add(node)
-        mask_nodes_j = list(mask_nodes_j_removed)
+        mask_nodes_i = expand_mask(mask_nodes_i)
+        mask_nodes_j = expand_mask(mask_nodes_j)
         
-        num_mask_edges_i = max(0, math.floor(0.25 * M))
-        num_mask_edges_j = max(0, math.floor(0.25 * M))
-        
-        mask_edges_i_single = random.sample(list(range(M)), num_mask_edges_i)
-        mask_edges_j_single = random.sample(list(range(M)), num_mask_edges_j)
+        num_mask_edges = max(0, math.floor(0.25 * M))
+        mask_edges_i_single = random.sample(list(range(M)), num_mask_edges)
+        mask_edges_j_single = random.sample(list(range(M)), num_mask_edges)
         mask_edges_i = [2*i for i in mask_edges_i_single] + [2*i+1 for i in mask_edges_i_single]
         mask_edges_j = [2*i for i in mask_edges_j_single] + [2*i+1 for i in mask_edges_j_single]
 
